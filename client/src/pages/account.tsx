@@ -189,7 +189,7 @@ function ChangePasswordModal() {
 export default function Account() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth() as { isAuthenticated: boolean; isLoading: boolean; user: User | null };
-
+  const [location] = useLocation();
 
   const LogoutMutation = useMutation({
     mutationFn: async () => {
@@ -241,7 +241,7 @@ export default function Account() {
     return null;
   }
 
-const [location] = useLocation();
+
 const routeToTab: Record<string, string> = {
   "/wallet": "wallet",
   "/orders": "orders",

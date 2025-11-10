@@ -90,7 +90,7 @@ export default function Header() {
             {isAuthenticated ? (
               <>
                 {/* Ringtone Points Button - Mobile Optimized */}
-                <Link href="/ringtune-points">
+                <Link href="/ringtone-points">
                   <button className="bg-muted text-yellow-300 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 hover:bg-primary hover:text-primary-foreground transition-colors text-xs sm:text-sm">
                     <i className="fas fa-music text-sm sm:text-base"></i>
                     <span>{ringtonePoints.toLocaleString()}</span>

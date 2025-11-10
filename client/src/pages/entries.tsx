@@ -1,251 +1,558 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
-import { Link } from "wouter";
+import Footer from "@/components/layout/footer";
+import { Link, useLocation } from "wouter";
+import { Transaction, User, Ticket, Competition } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { 
+  DollarSign, ShoppingCart, Gift, Users, ArrowUpCircle, ArrowDownCircle, 
+  ExternalLink, Filter, Copy, MapPin, CheckCircle, Wallet as WalletIcon,
+  FileText, Award, UserCircle, Home, Sparkles
+} from "lucide-react";
 import { format } from "date-fns";
-import { Card } from "@/components/ui/card";
-import { Competition, Ticket } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { OrderDetailsDialog } from "@/components/order-details-dialog";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-// Group tickets by competition
+const getTransactionIcon = (type: string) => {
+  switch (type) {
+    case "deposit":
+      return <ArrowUpCircle className="h-4 w-4 text-green-500" />;
+    case "withdrawal":
+      return <ArrowDownCircle className="h-4 w-4 text-red-500" />;
+    case "purchase":
+      return <ShoppingCart className="h-4 w-4 text-blue-500" />;
+    case "prize":
+      return <Gift className="h-4 w-4 text-yellow-500" />;
+    case "referral":
+      return <Users className="h-4 w-4 text-purple-500" />;
+    default:
+      return <DollarSign className="h-4 w-4 text-gray-500" />;
+  }
+};
+
+const getTransactionTypeBadge = (type: string) => {
+  const colors: Record<string, string> = {
+    deposit: "bg-green-500/10 text-green-500 border-green-500/20",
+    withdrawal: "bg-red-500/10 text-red-500 border-red-500/20",
+    purchase: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    prize: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+    referral: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  };
+
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${colors[type] || "bg-gray-500/10 text-gray-500 border-gray-500/20"}`}>
+      {type.charAt(0).toUpperCase() + type.slice(1)}
+    </span>
+  );
+};
+
+interface ReferralStats {
+  totalReferrals: number;
+  totalEarned: string;
+  referrals: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    createdAt: Date;
+  }>;
+}
+
 interface GroupedEntry {
   competition: Competition;
   tickets: Ticket[];
 }
 
+interface OrderWithCompetition {
+  competitions: {
+    title: string;
+    imageUrl: string;
+    ticketPrice: string;
+    type: string;
+  };
+  orders: {
+    id: string;
+    competitionId: string;
+    quantity: number;
+    totalAmount: string;
+    paymentMethod: string;
+    walletAmount: string;
+    pointsAmount: string;
+    cashflowsAmount: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  tickets?: Ticket[];
+  remainingPlays?: number;
+}
 export default function Entries() {
-  const { user } = useAuth();
+   const { toast } = useToast();
+   const { isAuthenticated, isLoading, user } = useAuth() as { isAuthenticated: boolean; isLoading: boolean; user: User | null };
+   const queryClient = useQueryClient();
+   const [location] = useLocation();
+    
+   const [topUpAmount, setTopUpAmount] = useState<string>("10");
+   const [filterType, setFilterType] = useState<string>("all");
+   const [addressForm, setAddressForm] = useState({
+     street: "",
+     city: "",
+     postcode: "",
+     country: "United Kingdom",
+   });
+   const [selectedOrder, setSelectedOrder] = useState<OrderWithCompetition | null>(null);
+   const [dialogOpen, setDialogOpen] = useState(false);
+   const [currentPage, setCurrentPage] = useState(1);
+   const ordersPerPage = 15;
+ 
+   const { data: transactions = [] } = useQuery<Transaction[]>({
+     queryKey: ["/api/user/transactions"],
+     enabled: isAuthenticated,
+   });
+ 
+   const { data: tickets = [] } = useQuery<Ticket[]>({
+     queryKey: ["/api/user/tickets"],
+     enabled: isAuthenticated,
+   });
+ 
+   const { data: competitions = [] } = useQuery<Competition[]>({
+     queryKey: ["/api/competitions"],
+     enabled: isAuthenticated,
+   });
+ 
+   const { data: referralCodeData } = useQuery<{ referralCode: string }>({
+     queryKey: ["/api/user/referral-code"],
+     enabled: isAuthenticated,
+   });
+ 
+   const { data: referralStats } = useQuery<ReferralStats>({
+     queryKey: ["/api/user/referral-stats"],
+     enabled: isAuthenticated,
+   });
+ 
+   const { data: orders = [] } = useQuery<OrderWithCompetition[]>({
+     queryKey: ["/api/user/orders"],
+     enabled: isAuthenticated,
+   });
+ 
+   const filteredTransactions = filterType === "all"
+     ? transactions
+     : transactions.filter(t => t.type === filterType);
+ 
+   // RingTone Points transactions
+   const pointsTransactions = transactions
+     .filter((t) => 
+       t.description?.toLowerCase().includes("ringtone") || 
+       t.description?.toLowerCase().includes("points")
+     )
+     .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+ 
+   const ringtonePoints = user?.ringtonePoints || 0;
+ 
+   // Group tickets by competition
+   const competitionMap = new Map(competitions.map(c => [c.id, c]));
+   const groupMap = new Map<string, GroupedEntry>();
+ 
+   tickets.forEach(ticket => {
+     const competition = competitionMap.get(ticket.competitionId);
+     if (!competition) return;
+ 
+     const existing = groupMap.get(competition.id);
+     if (existing) {
+       existing.tickets.push(ticket);
+     } else {
+       groupMap.set(competition.id, {
+         competition,
+         tickets: [ticket],
+       });
+     }
+   });
+ 
+   const groupedEntries = Array.from(groupMap.values()).map(entry => ({
+     ...entry,
+     tickets: entry.tickets.sort((a, b) => {
+       const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+       return bTime - aTime;
+     }),
+   }));
+ 
+   groupedEntries.sort((a, b) => {
+     const aTime = a.tickets[0]?.createdAt ? new Date(a.tickets[0].createdAt).getTime() : 0;
+     const bTime = b.tickets[0]?.createdAt ? new Date(b.tickets[0].createdAt).getTime() : 0;
+     return bTime - aTime;
+   });
+ 
+   // Orders pagination
+   const incompleteGames = orders.filter(
+     (order) => 
+       (order.competitions?.type === 'spin' || order.competitions?.type === 'scratch') &&
+       order.orders.status === 'completed' &&
+       (order.remainingPlays || 0) > 0
+   );
+ 
+   const completedOrders = orders.filter(
+     (order) => 
+       !((order.competitions?.type === 'spin' || order.competitions?.type === 'scratch') &&
+         order.orders.status === 'completed' &&
+         (order.remainingPlays || 0) > 0)
+   );
+ 
+   const totalPages = Math.ceil(completedOrders.length / ordersPerPage);
+   const startIndex = (currentPage - 1) * ordersPerPage;
+   const currentOrders = completedOrders.slice(startIndex, startIndex + ordersPerPage);
+ 
+   const referralLink = referralCodeData?.referralCode
+     ? `${window.location.origin}/register?ref=${referralCodeData.referralCode}`
+     : "";
+ 
+   const topUpMutation = useMutation({
+     mutationFn: async (amount: number) => {
+       const response = await apiRequest("/api/wallet/topup-checkout", "POST", { amount });
+       return response.json();
+     },
+     onSuccess: (data) => {
+       if (data.redirectUrl) {
+         window.location.href = data.redirectUrl;
+       } else {
+         toast({
+           title: "Error",
+           description: "Failed to get Cashflows checkout URL",
+           variant: "destructive",
+         });
+       }
+     },
+     onError: (error: any) => {
+       toast({
+         title: "Error",
+         description: error.message || "Failed to start checkout session",
+         variant: "destructive",
+       });
+     },
+   });
+ 
+   const LogoutMutation = useMutation({
+     mutationFn: async () => {
+       const res = await apiRequest("/api/auth/logout", "POST");
+       return res.json();
+     },
+     onSuccess: () => {
+       window.location.href = "/";
+     },
+     onError: (error: any) => {
+       toast({
+         variant: "destructive",
+         title: "Logout Failed",
+         description: error.message || "Something went wrong",
+       });
+     },
+   });
+ 
+   useEffect(() => {
+     if (!isLoading && !isAuthenticated) {
+       toast({
+         title: "Unauthorized",
+         description: "You are logged out. Logging in again...",
+         variant: "destructive",
+       });
+       setTimeout(() => {
+         window.location.href = "/api/login";
+       }, 500);
+       return;
+     }
+   }, [isAuthenticated, isLoading, toast]);
+ 
+   const handleTopUp = () => {
+     const amountNum = Number(topUpAmount);
+     if (amountNum < 5) {
+       toast({
+         title: "Invalid Amount",
+         description: "Minimum top-up amount is £5",
+         variant: "destructive",
+       });
+       return;
+     }
+     topUpMutation.mutate(amountNum);
+   };
+ 
+   const copyReferralLink = () => {
+     if (referralLink) {
+       navigator.clipboard.writeText(referralLink);
+       toast({
+         title: "Copied!",
+         description: "Referral link copied to clipboard",
+       });
+     }
+   };
+ 
+   const handleSaveAddress = () => {
+     if (!addressForm.street || !addressForm.city || !addressForm.postcode) {
+       toast({
+         title: "Invalid Address",
+         description: "Please fill in all required fields",
+         variant: "destructive",
+       });
+       return;
+     }
+ 
+     toast({
+       title: "Address Management Coming Soon",
+       description: "This feature will be available in a future update",
+       variant: "default",
+     });
+   };
+ 
+   const handleLogout = (e: React.FormEvent) => {
+     e.preventDefault();
+     LogoutMutation.mutate();
+   };
+ 
+   if (isLoading) {
+     return (
+       <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black flex items-center justify-center">
+         <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full" aria-label="Loading"/>
+       </div>
+     );
+   }
+ 
+   if (!isAuthenticated) {
+     return null;
+   }
 
-  const { data: tickets = [], isLoading: isLoadingTickets } = useQuery<Ticket[]>({
-    queryKey: ["/api/user/tickets"],
-    enabled: !!user,
-  });
+     const routeToTab: Record<string, string> = {
+  "/wallet": "wallet",
+  "/orders": "orders",
+  "/entries": "entries",
+  "/ringtone-points": "points",
+  "/referral": "referral",
+  "/account": "account",
+  "/address": "address",
+};
 
-  const { data: competitions = [], isLoading: isLoadingCompetitions } = useQuery<Competition[]>({
-    queryKey: ["/api/competitions"],
-    enabled: !!user,
-  });
-
-  // Group tickets by competition using Map for O(n) efficiency
-  const competitionMap = new Map(competitions.map(c => [c.id, c]));
-  const groupMap = new Map<string, GroupedEntry>();
-
-  tickets.forEach(ticket => {
-    const competition = competitionMap.get(ticket.competitionId);
-    if (!competition) return;
-
-    const existing = groupMap.get(competition.id);
-    if (existing) {
-      existing.tickets.push(ticket);
-    } else {
-      groupMap.set(competition.id, {
-        competition,
-        tickets: [ticket],
-      });
-    }
-  });
-
-  // Convert Map to array and sort each competition's tickets by date (newest first)
-  // Treat missing timestamps as 0 (oldest) for deterministic sorting
-  const groupedEntries = Array.from(groupMap.values()).map(entry => ({
-    ...entry,
-    tickets: entry.tickets.sort((a, b) => {
-      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bTime - aTime; // Newest first
-    }),
-  }));
-
-  // Sort competitions by most recent entry (newest first)
-  // Treat missing timestamps as 0 (oldest) for deterministic sorting
-  groupedEntries.sort((a, b) => {
-    const aTime = a.tickets[0]?.createdAt ? new Date(a.tickets[0].createdAt).getTime() : 0;
-    const bTime = b.tickets[0]?.createdAt ? new Date(b.tickets[0].createdAt).getTime() : 0;
-    return bTime - aTime;
-  });
-
-  const isLoading = isLoadingTickets || isLoadingCompetitions;
-  const totalEntries = tickets.length;
-
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header />
-      <div className="container mx-auto px-4 py-8">
-        {/* Navigation Tabs */}
-        <div className="bg-muted text-center py-4 mb-8">
-          <div className="flex flex-wrap justify-center gap-4 text-sm">
-            <Link href="/orders" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-orders">
-              Orders
-            </Link>
-            <span className="text-primary font-semibold" data-testid="text-current-page">Entries</span>
-            <Link href="/ringtune-points" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-ringtone-points">
-              RingTone Points
-            </Link>
-            <Link href="/referral" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-referral">
-              Referral Scheme
-            </Link>
-            <Link href="/wallet" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-wallet">
-              Wallet
-            </Link>
-            <Link href="/account" className="text-muted-foreground hover:text-primary transition-colors" data-testid="link-account">
-              Account details
-            </Link>
-          </div>
-        </div>
-
-        {/* Entries Summary Card */}
-        <Card className="max-w-4xl mx-auto p-6 mb-8 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">Your Competition Entries</h2>
-            <div className="flex justify-center items-baseline gap-2">
-              <span className="text-5xl font-bold text-primary" data-testid="text-total-entries">
-                {totalEntries}
-              </span>
-              <span className="text-xl text-muted-foreground">
-                {totalEntries === 1 ? 'entry' : 'entries'}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Across {groupedEntries.length} {groupedEntries.length === 1 ? 'competition' : 'competitions'}
-            </p>
-          </div>
-        </Card>
-
-        {/* Grouped Entries */}
-        <div className="max-w-4xl mx-auto space-y-6">
-          {isLoading ? (
-            <Card className="p-12">
-              <div className="text-center text-muted-foreground">
-                Loading your entries...
-              </div>
-            </Card>
-          ) : groupedEntries.length === 0 ? (
-            <Card className="p-12">
-              <div className="text-center space-y-4">
-                <p className="text-xl text-muted-foreground">No entries yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Start entering competitions to see your entries here!
-                </p>
-                <Link href="/">
-                  <button className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity" data-testid="button-browse-competitions">
-                    Browse Competitions
-                  </button>
-                </Link>
-              </div>
-            </Card>
-          ) : (
-            groupedEntries.map((entry, groupIndex) => (
-              <Card 
-                key={entry.competition.id} 
-                className="overflow-hidden"
-                data-testid={`card-competition-${groupIndex}`}
-              >
-                {/* Competition Header */}
-                <div className="bg-muted/50 p-4 border-b border-border">
-                  <div className="flex items-start gap-4">
-                    {/* Competition Image */}
-                    {entry.competition.imageUrl && (
-                      <img
-                        src={entry.competition.imageUrl}
-                        alt={entry.competition.title}
-                        className="w-20 h-20 object-cover rounded-lg"
-                        data-testid={`img-competition-${groupIndex}`}
-                      />
-                    )}
-                    
-                    {/* Competition Info */}
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-foreground mb-1" data-testid={`text-competition-title-${groupIndex}`}>
-                        {entry.competition.title}
-                      </h3>
-                      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <span className="font-medium">Type:</span>
-                          <span className="capitalize bg-primary/10 text-primary px-2 py-0.5 rounded" data-testid={`text-type-${groupIndex}`}>
-                            {entry.competition.type}
-                          </span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="font-medium">Entries:</span>
-                          <span className="text-primary font-semibold" data-testid={`text-entry-count-${groupIndex}`}>
-                            {entry.tickets.length}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Entry Numbers */}
-                <div className="p-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground mb-3">
-                    Your Entry Numbers:
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                    {entry.tickets.map((ticket, ticketIndex) => (
-                      <div
-                        key={ticket.id}
-                        className={`px-3 py-2 rounded-lg border text-center font-mono text-sm ${
-                          ticket.isWinner
-                            ? 'bg-green-500/10 border-green-500 text-green-600 dark:text-green-400 font-bold'
-                            : 'bg-card border-border text-foreground'
-                        }`}
-                        data-testid={`text-entry-number-${groupIndex}-${ticketIndex}`}
-                      >
-                        {ticket.ticketNumber}
-                        {ticket.isWinner && (
-                          <div className="text-xs mt-1">🎉 Winner!</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Entry Date */}
-                  <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
-                    First entry: {(() => {
-                      // Find the earliest valid timestamp
-                      const validTimestamps = entry.tickets
-                        .map(t => t.createdAt ? new Date(t.createdAt).getTime() : null)
-                        .filter((time): time is number => time !== null);
-                      
-                      if (validTimestamps.length === 0) {
-                        return 'Not available';
-                      }
-                      
-                      const earliestTime = Math.min(...validTimestamps);
-                      return format(new Date(earliestTime), "dd MMM yyyy 'at' HH:mm");
-                    })()}
-                  </div>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-
-        {/* Info Section */}
-        {groupedEntries.length > 0 && (
-          <div className="max-w-4xl mx-auto mt-8 p-6 bg-muted/30 rounded-lg border border-border">
-            <h4 className="font-semibold mb-3">About Your Entries</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>Each entry number represents a unique ticket in the competition</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>Winning entries are highlighted in green with a celebration emoji</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>For Spin Wheel and Scratch Card games, play your entries from the Games page</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>Instant Win entries are automatically checked for prizes upon purchase</span>
-              </li>
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+const activeTab = routeToTab[location] ; 
+ 
+   return (
+     <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black text-white">
+       <Header />
+       
+       <div className="container mx-auto px-4 py-8">
+         {/* Premium Header */}
+         <div className="max-w-7xl mx-auto mb-8">
+           <div className="text-center mb-8">
+             <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent" data-testid="heading-account">
+               MY ACCOUNT
+             </h1>
+             <div className="flex items-center justify-center gap-3 text-gray-400">
+               <Sparkles className="h-4 w-4 text-yellow-500" />
+               <p className="text-sm">Manage your competitions, rewards & settings</p>
+               <Sparkles className="h-4 w-4 text-yellow-500" />
+             </div>
+           </div>
+ 
+           {/* Premium Tabbed Interface */}
+           <Tabs value={activeTab} className="w-full">
+             <TabsList className="grid w-full h-full grid-cols-4 md:grid-cols-7 gap-2 bg-zinc-900/50 border border-yellow-500/20 p-2 rounded-xl mb-12 relative z-10" data-testid="tabs-account">
+              <Link href="/wallet" className="contents">
+                <TabsTrigger 
+                  value="wallet" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-wallet"
+                >
+                  <WalletIcon className="h-4 w-4" />
+                  <span>Wallet</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/orders" className="contents">
+                <TabsTrigger 
+                  value="orders"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-orders"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Orders</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/entries" className="contents">
+                <TabsTrigger 
+                  value="entries"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-entries"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  <span>Entries</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/ringtone-points" className="contents">
+                <TabsTrigger 
+                  value="points"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-points"
+                >
+                  <Award className="h-4 w-4" />
+                  <span>Points</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/referral" className="contents">
+                <TabsTrigger 
+                  value="referral"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-referral"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Referral</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/account" className="contents">
+                <TabsTrigger 
+                  value="account"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-account"
+                >
+                  <UserCircle className="h-4 w-4" />
+                  <span>Account</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/address" className="contents">
+                <TabsTrigger 
+                  value="address"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-address"
+                >
+                  <Home className="h-4 w-4" />
+                  <span>Address</span>
+                </TabsTrigger>
+              </Link>
+            </TabsList>
+ 
+ 
+             {/* ENTRIES TAB */}
+             <TabsContent value="entries" className="space-y-6 pt-12 relative z-0" data-testid="content-entries">
+               <Card className="bg-gradient-to-br from-yellow-900/10 via-zinc-900 to-zinc-900 border-yellow-500/30 shadow-xl shadow-yellow-500/10">
+                 <CardContent className="p-8">
+                   <div className="text-center space-y-3">
+                     <h2 className="text-3xl font-bold text-yellow-400">Your Competition Entries</h2>
+                     <div className="flex justify-center items-baseline gap-3">
+                       <span className="text-6xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent" data-testid="text-total-entries">
+                         {tickets.length}
+                       </span>
+                       <span className="text-2xl text-gray-400">
+                         {tickets.length === 1 ? 'entry' : 'entries'}
+                       </span>
+                     </div>
+                     <p className="text-gray-400">
+                       Across {groupedEntries.length} {groupedEntries.length === 1 ? 'competition' : 'competitions'}
+                     </p>
+                   </div>
+                 </CardContent>
+               </Card>
+ 
+               <div className="space-y-6">
+                 {groupedEntries.length === 0 ? (
+                   <Card className="bg-zinc-900 border-yellow-500/30">
+                     <CardContent className="p-12">
+                       <div className="text-center space-y-4">
+                         <p className="text-xl text-gray-400">No entries yet</p>
+                         <p className="text-sm text-gray-500">
+                           Start entering competitions to see your entries here!
+                         </p>
+                         <Link href="/">
+                           <button className="mt-4 px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black rounded-lg font-bold hover:from-yellow-500 hover:to-yellow-400 transition-all transform hover:scale-105 shadow-lg shadow-yellow-500/50">
+                             Browse Competitions
+                           </button>
+                         </Link>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 ) : (
+                   groupedEntries.map((entry, groupIndex) => (
+                     <Card key={entry.competition.id} className="bg-zinc-900 border-yellow-500/30 overflow-hidden shadow-xl shadow-yellow-500/10">
+                       <div className="bg-gradient-to-r from-yellow-900/20 to-zinc-900 p-4 border-b border-yellow-500/30">
+                         <div className="flex items-start gap-4">
+                           {entry.competition.imageUrl && (
+                             <img
+                               src={entry.competition.imageUrl}
+                               alt={entry.competition.title}
+                               className="w-20 h-20 object-cover rounded-lg shadow-lg"
+                             />
+                           )}
+                           <div className="flex-1">
+                             <h3 className="text-xl font-bold text-yellow-400 mb-2">
+                               {entry.competition.title}
+                             </h3>
+                             <div className="flex flex-wrap gap-3 text-sm">
+                               <span className="flex items-center gap-1">
+                                 <span className="text-gray-400">Type:</span>
+                                 <span className="capitalize bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/30">
+                                   {entry.competition.type}
+                                 </span>
+                               </span>
+                               <span className="flex items-center gap-1">
+                                 <span className="text-gray-400">Entries:</span>
+                                 <span className="text-yellow-400 font-semibold">
+                                   {entry.tickets.length}
+                                 </span>
+                               </span>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
+                       <CardContent className="p-4">
+                         <h4 className="text-sm font-semibold text-gray-400 mb-3">
+                           Your Entry Numbers:
+                         </h4>
+                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                           {entry.tickets.map((ticket) => (
+                             <div
+                               key={ticket.id}
+                               className={`px-3 py-2 rounded-lg border text-center font-mono text-sm transition-all hover:scale-105 ${
+                                 ticket.isWinner
+                                   ? 'bg-green-500/20 border-green-500 text-green-400 font-bold shadow-lg shadow-green-500/50'
+                                   : 'bg-black/50 border-yellow-500/20 text-white hover:border-yellow-500/50'
+                               }`}
+                             >
+                               {ticket.ticketNumber}
+                               {ticket.isWinner && (
+                                 <div className="text-xs mt-1">🎉</div>
+                               )}
+                             </div>
+                           ))}
+                         </div>
+                       </CardContent>
+                     </Card>
+                   ))
+                 )}
+               </div>
+             </TabsContent>
+ 
+ 
+           
+ 
+           
+           </Tabs>
+         </div>
+       </div>
+       <Footer />
+     </div>
+   );
 }

@@ -398,7 +398,7 @@ const purchaseTicketMutation = useMutation({
                       <div className="flex">
                         {/* Main Image Slide */}
                         <div className="flex-[0_0_100%] min-w-0">
-                          <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+                          <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
                             <img
                               src={competition.imageUrl || "https://images.unsplash.com/photo-1518611012118-696072aa579a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"}
                               alt={competition.title}

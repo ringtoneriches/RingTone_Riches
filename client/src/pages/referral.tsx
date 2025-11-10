@@ -1,11 +1,34 @@
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Header from "@/components/layout/header";
+import Footer from "@/components/layout/footer";
+import { Link, useLocation } from "wouter";
+import { Transaction, User, Ticket, Competition } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { 
+  DollarSign, ShoppingCart, Gift, Users, ArrowUpCircle, ArrowDownCircle, 
+  ExternalLink, Filter, Copy, MapPin, CheckCircle, Wallet as WalletIcon,
+  FileText, Award, UserCircle, Home, Sparkles
+} from "lucide-react";
+import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { Link } from "wouter";
-import { Copy, Users, DollarSign, Gift } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { OrderDetailsDialog } from "@/components/order-details-dialog";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+
 
 interface ReferralStats {
   totalReferrals: number;
@@ -20,22 +43,38 @@ interface ReferralStats {
 }
 
 export default function Referral() {
-  const { user } = useAuth();
-  const { toast } = useToast();
+ const { toast } = useToast();
+  const { isAuthenticated, isLoading, user } = useAuth() as { isAuthenticated: boolean; isLoading: boolean; user: User | null };
+  const [location] = useLocation(); 
 
-  const { data: referralCodeData, isLoading: isLoadingCode } = useQuery<{ referralCode: string }>({
+  const { data: referralCodeData } = useQuery<{ referralCode: string }>({
     queryKey: ["/api/user/referral-code"],
-    enabled: !!user,
+    enabled: isAuthenticated,
   });
 
-  const { data: stats, isLoading: isLoadingStats } = useQuery<ReferralStats>({
+  const { data: referralStats } = useQuery<ReferralStats>({
     queryKey: ["/api/user/referral-stats"],
-    enabled: !!user,
+    enabled: isAuthenticated,
   });
 
   const referralLink = referralCodeData?.referralCode
     ? `${window.location.origin}/register?ref=${referralCodeData.referralCode}`
     : "";
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, isLoading, toast]);
+
 
   const copyReferralLink = () => {
     if (referralLink) {
@@ -47,188 +86,270 @@ export default function Referral() {
     }
   };
 
-  if (!user) {
+  if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Please Log In</CardTitle>
-            <CardDescription>You need to be logged in to view your referral information</CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black flex items-center justify-center">
+        <div className="animate-spin w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full" aria-label="Loading"/>
       </div>
     );
   }
 
-  const isLoading = isLoadingCode || isLoadingStats;
+  if (!isAuthenticated) {
+    return null;
+  }
+ const routeToTab: Record<string, string> = {
+     "/wallet": "wallet",
+     "/orders": "orders",
+     "/entries": "entries",
+     "/ringtone-points": "points",
+     "/referral": "referral",
+     "/account": "account",
+     "/address": "address",
+   };
+   
+   const activeTab = routeToTab[location] ; 
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent">
-            Referral Scheme
-          </h1>
-          <p className="text-muted-foreground">Share the love and earn rewards!</p>
-        </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          <Link href="/wallet" className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap" data-testid="link-wallet">
-            Wallet
-          </Link>
-          <span className="text-muted-foreground">•</span>
-          <Link href="/orders" className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap" data-testid="link-orders">
-            Orders
-          </Link>
-          <span className="text-muted-foreground">•</span>
-          <Link href="/ringtune-points" className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap" data-testid="link-ringtune-points">
-            Ringtune Points
-          </Link>
-          <span className="text-muted-foreground">•</span>
-          <Link href="/entries" className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap" data-testid="link-entries">
-            Entries
-          </Link>
-          <span className="text-muted-foreground">•</span>
-          <span className="text-primary font-medium whitespace-nowrap">Referral Scheme</span>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <Card className="bg-zinc-900/50 border-yellow-500/20 hover:border-yellow-500/40 transition-all">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="h-5 w-5 text-yellow-500" />
-                Total Referrals
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="h-10 bg-muted animate-pulse rounded" />
-              ) : (
-                <p className="text-3xl font-bold text-yellow-500" data-testid="text-total-referrals">
-                  {stats?.totalReferrals || 0}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-zinc-900/50 border-yellow-500/20 hover:border-yellow-500/40 transition-all">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="h-5 w-5 text-green-500" />
-                Total Earned
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="h-10 bg-muted animate-pulse rounded" />
-              ) : (
-                <p className="text-3xl font-bold text-green-500" data-testid="text-total-earned">
-                  £{stats?.totalEarned || "0.00"}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Referral Link Card */}
-        <Card className="mb-6 bg-gradient-to-br from-yellow-500/10 via-yellow-500/5 to-transparent border-yellow-500/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-yellow-500" />
-              Your Referral Link
-            </CardTitle>
-            <CardDescription>Share this link with friends to earn rewards</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoadingCode ? (
-              <div className="h-12 bg-muted animate-pulse rounded" />
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={referralLink}
-                  readOnly
-                  className="flex-1 px-4 py-3 bg-black/50 border border-yellow-500/30 rounded-lg text-sm font-mono"
-                  data-testid="input-referral-link"
-                />
-                <Button
-                  onClick={copyReferralLink}
-                  className="bg-yellow-500 hover:bg-yellow-600 text-black"
-                  data-testid="button-copy"
+   return (
+     <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black text-white">
+       <Header />
+       
+       <div className="container mx-auto px-4 py-8">
+         {/* Premium Header */}
+         <div className="max-w-7xl mx-auto mb-8">
+           <div className="text-center mb-8">
+             <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent" data-testid="heading-account">
+               MY ACCOUNT
+             </h1>
+             <div className="flex items-center justify-center gap-3 text-gray-400">
+               <Sparkles className="h-4 w-4 text-yellow-500" />
+               <p className="text-sm">Manage your competitions, rewards & settings</p>
+               <Sparkles className="h-4 w-4 text-yellow-500" />
+             </div>
+           </div>
+ 
+           {/* Premium Tabbed Interface */}
+           <Tabs value={activeTab} className="w-full">
+             <TabsList className="grid w-full h-full grid-cols-4 md:grid-cols-7 gap-2 bg-zinc-900/50 border border-yellow-500/20 p-2 rounded-xl mb-12 relative z-10" data-testid="tabs-account">
+              <Link href="/wallet" className="contents">
+                <TabsTrigger 
+                  value="wallet" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-wallet"
                 >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy
-                </Button>
-              </div>
-            )}
+                  <WalletIcon className="h-4 w-4" />
+                  <span>Wallet</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/orders" className="contents">
+                <TabsTrigger 
+                  value="orders"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-orders"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Orders</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/entries" className="contents">
+                <TabsTrigger 
+                  value="entries"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-entries"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  <span>Entries</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/ringtone-points" className="contents">
+                <TabsTrigger 
+                  value="points"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-points"
+                >
+                  <Award className="h-4 w-4" />
+                  <span>Points</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/referral" className="contents">
+                <TabsTrigger 
+                  value="referral"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-referral"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Referral</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/account" className="contents">
+                <TabsTrigger 
+                  value="account"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-account"
+                >
+                  <UserCircle className="h-4 w-4" />
+                  <span>Account</span>
+                </TabsTrigger>
+              </Link>
+              
+              <Link href="/address" className="contents">
+                <TabsTrigger 
+                  value="address"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-yellow-500/50 transition-all text-xs sm:text-sm flex-col sm:flex-row gap-1 py-3"
+                  data-testid="tab-address"
+                >
+                  <Home className="h-4 w-4" />
+                  <span>Address</span>
+                </TabsTrigger>
+              </Link>
+            </TabsList>
 
-            <div className="bg-black/30 rounded-lg p-4 space-y-2">
-              <h3 className="font-semibold text-yellow-500">How it works:</h3>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>• Share your unique referral link with friends</li>
-                <li>• They sign up using your link and make their first entry</li>
-                <li>• You earn £5 bonus credit when they complete their first competition entry</li>
-                <li>• Your friend gets 100 Ringtune Points as a welcome bonus</li>
-                <li>• Unlimited referrals - the more friends, the more you earn!</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+          
 
-        {/* Referred Friends */}
-        <Card className="bg-zinc-900/50 border-yellow-500/20">
-          <CardHeader>
-            <CardTitle>Your Referrals</CardTitle>
-            <CardDescription>
-              {stats?.totalReferrals === 0
-                ? "You haven't referred anyone yet"
-                : `${stats?.totalReferrals} friend${stats?.totalReferrals === 1 ? "" : "s"} joined through your link`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 bg-muted animate-pulse rounded" />
-                ))}
+           
+
+            {/* REFERRAL TAB */}
+            <TabsContent value="referral" className="space-y-6 pt-12 relative z-0" data-testid="content-referral">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border-yellow-500/30 hover:border-yellow-500/50 transition-all shadow-xl shadow-yellow-500/10">
+                  <CardHeader className="border-b border-yellow-500/20">
+                    <CardTitle className="flex items-center gap-2 text-xl text-yellow-400">
+                      <Users className="h-6 w-6" />
+                      Total Referrals
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <p className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent" data-testid="text-total-referrals">
+                      {referralStats?.totalReferrals || 0}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border-yellow-500/30 hover:border-yellow-500/50 transition-all shadow-xl shadow-yellow-500/10">
+                  <CardHeader className="border-b border-yellow-500/20">
+                    <CardTitle className="flex items-center gap-2 text-xl text-yellow-400">
+                      <DollarSign className="h-6 w-6" />
+                      Total Earned
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <p className="text-5xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent" data-testid="text-total-earned">
+                      £{referralStats?.totalEarned || "0.00"}
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
-            ) : stats?.referrals && stats.referrals.length > 0 ? (
-              <div className="space-y-2">
-                {stats.referrals.map((referral) => (
-                  <div
-                    key={referral.id}
-                    className="flex items-center justify-between p-4 bg-black/30 rounded-lg border border-yellow-500/10 hover:border-yellow-500/30 transition-colors"
-                    data-testid={`referral-${referral.id}`}
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {referral.firstName} {referral.lastName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{referral.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">
-                        Joined {format(new Date(referral.createdAt), "dd MMM yyyy")}
-                      </p>
-                    </div>
+
+              <Card className="bg-gradient-to-br from-yellow-900/20 via-zinc-900 to-zinc-900 border-yellow-500/40 shadow-xl shadow-yellow-500/20">
+                <CardHeader className="border-b border-yellow-500/30">
+                  <CardTitle className="flex items-center gap-2 text-2xl text-yellow-400">
+                    <Gift className="h-6 w-6" />
+                    Your Referral Link
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">Share this link with friends to earn rewards</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={referralLink}
+                      readOnly
+                      className="flex-1 px-4 py-3 bg-black/50 border border-yellow-500/30 rounded-lg text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      data-testid="input-referral-link"
+                    />
+                    <Button
+                      onClick={copyReferralLink}
+                      className="bg-gradient-to-r from-yellow-600 to-yellow-500 text-black hover:from-yellow-500 hover:to-yellow-400 shadow-lg shadow-yellow-500/50"
+                      data-testid="button-copy-referral"
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy
+                    </Button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-muted-foreground mb-4">No referrals yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Start sharing your link to earn rewards!
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                  <div className="bg-black/50 rounded-lg p-6 border border-yellow-500/20">
+                    <h3 className="font-semibold text-yellow-400 mb-4 text-lg">How it works:</h3>
+                    <ul className="space-y-2 text-sm text-gray-300">
+                      <li className="flex items-start gap-2">
+                        <span className="text-yellow-500">•</span>
+                        <span>Share your unique referral link with friends</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-yellow-500">•</span>
+                        <span>They sign up using your link and make their first entry</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-yellow-500">•</span>
+                        <span>You earn £5 bonus credit when they complete their first competition entry</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-yellow-500">•</span>
+                        <span>Your friend gets 100 Ringtune Points as a welcome bonus</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-yellow-500">•</span>
+                        <span>Unlimited referrals - the more friends, the more you earn!</span>
+                      </li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900 border-yellow-500/30 shadow-xl shadow-yellow-500/10">
+                <CardHeader className="border-b border-yellow-500/20">
+                  <CardTitle className="text-2xl text-yellow-400">Your Referrals</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    {referralStats?.totalReferrals === 0
+                      ? "You haven't referred anyone yet"
+                      : `${referralStats?.totalReferrals} friend${referralStats?.totalReferrals === 1 ? "" : "s"} joined through your link`}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {referralStats?.referrals && referralStats.referrals.length > 0 ? (
+                    <div className="space-y-3">
+                      {referralStats.referrals.map((referral) => (
+                        <div
+                          key={referral.id}
+                          className="flex items-center justify-between p-4 bg-black/30 rounded-lg border border-yellow-500/10 hover:border-yellow-500/30 transition-colors"
+                        >
+                          <div>
+                            <p className="font-medium text-white">
+                              {referral.firstName} {referral.lastName}
+                            </p>
+                            <p className="text-sm text-gray-400">{referral.email}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-400">
+                              Joined {format(new Date(referral.createdAt), "dd MMM yyyy")}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Users className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                      <p className="text-gray-400 mb-2">No referrals yet</p>
+                      <p className="text-sm text-gray-500">
+                        Start sharing your link to earn rewards!
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+          </Tabs>
+        </div>
       </div>
+
+
+      <Footer />
     </div>
   );
 }

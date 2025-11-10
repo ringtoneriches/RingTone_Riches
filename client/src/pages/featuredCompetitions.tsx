@@ -81,7 +81,7 @@ export default function FeaturedCompetitions({ competitions }: FeaturedCompetiti
                           
                           {/* Image Container with Premium Gold Border */}
                           <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-[#FACC15]/60 shadow-[#FACC15]/30">
-                            <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+                            <div className="relative  bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
                               <img
                                 src={
                                   competition.imageUrl ||
