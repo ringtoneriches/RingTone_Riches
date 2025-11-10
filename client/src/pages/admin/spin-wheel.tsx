@@ -180,7 +180,7 @@ function CompetitionForm({
               }
               data-testid="select-type"
             >
-              <option value="instant">Instant Win</option>
+              <option value="instant">Regular Competition</option>
               <option value="spin">Spin Wheel</option>
               <option value="scratch">Scratch Card</option>
             </select>
@@ -190,7 +190,7 @@ function CompetitionForm({
           <div>
             <Label>Type</Label>
             <div className="w-full p-2 border border-border rounded-md bg-muted text-foreground">
-              {fixedType === "spin" ? "Spin Wheel" : fixedType === "scratch" ? "Scratch Card" : "Instant Win"}
+              {fixedType === "spin" ? "Spin Wheel" : fixedType === "scratch" ? "Scratch Card" : "Regular Competition"}
             </div>
           </div>
         )}

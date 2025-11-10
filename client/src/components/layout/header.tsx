@@ -90,7 +90,7 @@ export default function Header() {
             {isAuthenticated ? (
               <>
                 {/* Ringtone Points Button - Mobile Optimized */}
-                <Link href="/ringtone-points">
+                <Link href="/wallet">
                   <button className="bg-muted text-yellow-300 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 hover:bg-primary hover:text-primary-foreground transition-colors text-xs sm:text-sm">
                     <i className="fas fa-music text-sm sm:text-base"></i>
                     <span>{ringtonePoints.toLocaleString()}</span>
@@ -105,7 +105,7 @@ export default function Header() {
                   </button>
                 </Link>
                 
-                <Link href="/account">
+                <Link href="/wallet">
                   <button className="bg-primary hidden md:block text-primary-foreground px-3 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity">
                     MY ACCOUNT
                   </button>
@@ -203,7 +203,7 @@ export default function Header() {
               <div className="p-6 space-y-3">
                 {isAuthenticated ? (
                   <>
-                    <Link href="/account" onClick={() => setMobileOpen(false)}>
+                    <Link href="/wallet" onClick={() => setMobileOpen(false)}>
                       <button className="w-full bg-gradient-to-r from-[#FACC15] via-[#F59E0B] to-[#FACC15] text-gray-900 px-6 py-4 rounded-xl font-black text-lg shadow-lg shadow-primary/50 hover:shadow-primary/70 transition-all duration-300 hover:scale-105">
                         MY ACCOUNT
                       </button>

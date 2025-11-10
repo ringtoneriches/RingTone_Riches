@@ -17,6 +17,7 @@ import {
   insertTicketSchema,
   registerUserSchema,
   loginUserSchema,
+  insertWithdrawalRequestSchema,
   competitions,
   tickets,
   orders,
@@ -27,6 +28,7 @@ import {
   scratchCardImages,
   scratchCardWins,
   scratchCardUsage,
+  withdrawalRequests,
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { db } from "./db";
@@ -298,6 +300,10 @@ app.put("/api/auth/user", isAuthenticated, async (req: any, res) => {
       dateOfBirth,
       birthMonth,
       birthYear,
+      addressStreet,
+      addressCity,
+      addressPostcode,
+      addressCountry,
     } = req.body;
 
 
@@ -313,6 +319,10 @@ if (birthMonth && birthYear) {
       dateOfBirth:dobString,
       birthMonth,
       birthYear,
+      addressStreet,
+      addressCity,
+      addressPostcode,
+      addressCountry,
     };
 
     if (password) {
@@ -338,6 +348,10 @@ if (email) {
       firstName: updatedUser.firstName,
       lastName: updatedUser.lastName,
       dateOfBirth: updatedUser.dateOfBirth,
+      addressStreet: updatedUser.addressStreet,
+      addressCity: updatedUser.addressCity,
+      addressPostcode: updatedUser.addressPostcode,
+      addressCountry: updatedUser.addressCountry,
       updatedAt: updatedUser.updatedAt,
     });
   } catch (error) {
@@ -2470,8 +2484,128 @@ app.post("/api/wallet/confirm-topup", isAuthenticated, async (req: any, res) => 
   }
 });
 
-app.get("/api/winners", async (req, res) => {
+// Withdrawal Request Routes - Collect details for manual processing
+const withdrawalRequestInputSchema = insertWithdrawalRequestSchema.extend({
+  amount: z.string().refine((val) => parseFloat(val) >= 5, {
+    message: "Minimum withdrawal amount is £5",
+  }),
+  accountName: z.string().trim().min(1, "Account name is required"),
+  accountNumber: z.string().trim().regex(/^\d{8}$/, "Account number must be 8 digits"),
+  sortCode: z.string().trim().regex(/^\d{6}$/, "Sort code must be 6 digits"),
+});
+
+app.post("/api/withdrawal-requests", isAuthenticated, async (req: any, res) => {
   try {
+    const userId = req.user.id;
+    
+    // Validate input with Zod
+    const result = withdrawalRequestInputSchema.safeParse({
+      ...req.body,
+      userId,
+      status: "pending",
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Invalid withdrawal request data",
+        errors: result.error.issues,
+      });
+    }
+
+    const { amount, accountName, accountNumber, sortCode } = result.data;
+
+    // Check user has sufficient balance (just validation, no deduction)
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const currentBalance = parseFloat(user.balance);
+    const withdrawalAmount = parseFloat(amount);
+
+    if (currentBalance < withdrawalAmount) {
+      return res.status(400).json({ message: "Insufficient balance for this withdrawal request" });
+    }
+
+    // Create withdrawal request (no balance deduction - admin will process manually)
+    await storage.createWithdrawalRequest({
+      userId,
+      amount,
+      accountName,
+      accountNumber,
+      sortCode,
+      status: "pending",
+    });
+
+    res.status(201).json({ 
+      message: "Withdrawal request submitted successfully. It will be processed manually by our team." 
+    });
+  } catch (error: any) {
+    console.error("Error creating withdrawal request:", error);
+    res.status(500).json({
+      message: error.message || "Failed to create withdrawal request",
+    });
+  }
+});
+
+app.get("/api/withdrawal-requests/me", isAuthenticated, async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+    const requests = await storage.getUserWithdrawalRequests(userId);
+    res.json(requests);
+  } catch (error) {
+    console.error("Error fetching user withdrawal requests:", error);
+    res.status(500).json({ message: "Failed to fetch withdrawal requests" });
+  }
+});
+
+app.get("/api/admin/withdrawal-requests", isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const requests = await storage.getWithdrawalRequests();
+    res.json(requests);
+  } catch (error) {
+    console.error("Error fetching withdrawal requests:", error);
+    res.status(500).json({ message: "Failed to fetch withdrawal requests" });
+  }
+});
+
+app.patch("/api/admin/withdrawal-requests/:id", isAuthenticated, isAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+    const processedBy = req.user.id;
+
+    if (!status || !["approved", "rejected", "processed"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status. Must be 'approved', 'rejected', or 'processed'" });
+    }
+
+    // Get the withdrawal request
+    const request = await storage.getWithdrawalRequest(id);
+    if (!request) {
+      return res.status(404).json({ message: "Withdrawal request not found" });
+    }
+
+    if (request.status !== "pending") {
+      return res.status(400).json({ message: "This request has already been processed" });
+    }
+
+    // Just update the status - admin will manually process the payment
+    const updated = await storage.updateWithdrawalRequestStatus(
+      id,
+      status,
+      adminNotes,
+      processedBy
+    );
+
+    res.json({ message: `Withdrawal request ${status} successfully`, request: updated });
+  } catch (error) {
+    console.error("Error updating withdrawal request:", error);
+    res.status(500).json({ message: "Failed to update withdrawal request" });
+  }
+});
+
+app.get("/api/winners", async (req, res) => {
+  try{
     const winners = await storage.getRecentWinners(50);
     console.log("🧩 Winners from storage:", winners);
     res.json(winners);
@@ -2926,6 +3060,10 @@ app.get("/api/admin/users", isAuthenticated, isAdmin, async (req: any, res) => {
       ringtonePoints: user.ringtonePoints,
       isAdmin: user.isAdmin,
       createdAt: user.createdAt,
+      addressStreet: user.addressStreet,
+      addressCity: user.addressCity,
+      addressPostcode: user.addressPostcode,
+      addressCountry: user.addressCountry,
     })));
   } catch (error) {
     console.error("Error fetching users:", error);

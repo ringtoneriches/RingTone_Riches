@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,9 +8,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
-import Account from "@/pages/account";
 import Wallet from "@/pages/wallet";
-import Orders from "@/pages/orders";
 import PastWinners from "@/pages/past-winners";
 import Checkout from "@/pages/checkout";
 import Competition from "@/pages/competition";
@@ -20,9 +18,6 @@ import Register from "@/pages/register";
 import spinWheel from "./pages/spinWheel";
 import WalletSuccess from "./pages/success";
 import CheckoutSuccess from "./pages/competion-success";
-import RingtonePoints from "./pages/ringtunePoints";
-import Entries from "./pages/entries";
-import Referral from "./pages/referral";
 import scratchcard from "./pages/scratch-card";
 import PaymentCancelled from "./pages/cancelled";
 import PaymentFailed from "./pages/failed";
@@ -47,7 +42,7 @@ import AdminScratchCard from "./pages/admin/scratch-card";
 import AdminUsers from "./pages/admin/users";
 import AdminOrders from "./pages/admin/orders";
 import AdminSettings from "./pages/admin/settings";
-import Address from "./pages/address";
+import AdminWithdrawals from "./pages/admin/withdrawals";
 
 
 function HomePage() {
@@ -56,10 +51,7 @@ function HomePage() {
   return <Home />;
 }
 
-
-
 function Router() {
-
   return (
     <Switch>
       {/* Public routes - always available */}
@@ -81,10 +73,8 @@ function Router() {
       <Route path="/spin/:competitionId/:orderId" component={SpinGamePage} />
       
       {/* Authenticated routes - always registered, auth checked in component */}
-      <Route path="/account" component={Account} />
       <Route path="/instant" component={instant} />
       <Route path="/wallet" component={Wallet} />
-      <Route path="/orders" component={Orders} />
       <Route path="/checkout/:orderId" component={Checkout} />
       <Route path="/spin-wheel" component={spinWheel} />
       <Route path="/scratch-card" component={ScratchCardPage} />
@@ -94,10 +84,6 @@ function Router() {
       <Route path="/success/competition" component={CheckoutSuccess} />
       <Route path="/failed" component={CheckoutFailed} />
       <Route path="/cancelled" component={CheckoutCancelled} />
-      <Route path="/ringtone-points" component={RingtonePoints} />
-      <Route path="/entries" component={Entries} />
-      <Route path="/referral" component={Referral} />
-      <Route path="/address" component={Address} />
       <Route path="/scratch" component={scratchcard} />
       <Route path="/spin-billing/:orderId" component={SpinBilling} />
       <Route path="/scratch-billing/:orderId" component={ScratchBilling} />
@@ -110,6 +96,7 @@ function Router() {
       <Route path="/admin/competitions" component={AdminCompetitions} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/orders" component={AdminOrders} />
+      <Route path="/admin/withdrawals" component={AdminWithdrawals} />
       <Route path="/admin/settings" component={AdminSettings} />
       
       <Route component={NotFound} />
@@ -120,19 +107,7 @@ function Router() {
 function App() {
   // Enable real-time updates via WebSocket (temporarily disabled)
   // useWebSocket();
-    const [location] = useLocation();
-   useEffect(() => {
-  // Scroll main window
-  window.scrollTo({ top: 0, behavior: "auto" });
 
-  // Also scroll any main container div if you’re using one
-  const root = document.getElementById("root");
-  if (root) root.scrollTo({ top: 0, behavior: "auto" });
-
-  // Also scroll body/html (some browsers treat differently)
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-}, [location]);
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

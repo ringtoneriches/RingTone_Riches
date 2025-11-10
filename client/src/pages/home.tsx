@@ -73,7 +73,7 @@ export default function Home() {
               { id: "all", label: "ALL COMPETITIONS", icon: Sparkles, color: "from-primary to-yellow-400" },
               { id: "spin", label: "SPIN WHEELS", icon: Zap, color: "from-purple-500 to-pink-500" },
               { id: "scratch", label: "SCRATCH CARDS", icon: Trophy, color: "from-blue-500 to-cyan-500" },
-              { id: "instant", label: "INSTANT WIN", icon: Gift, color: "from-green-500 to-emerald-500" }
+              { id: "instant", label: "COMPETITIONS", icon: Gift, color: "from-green-500 to-emerald-500" }
             ].map((filter) => (
               <button
                 key={filter.id}
@@ -126,7 +126,7 @@ export default function Home() {
                       ? "🎡 Spin to Win"
                       : activeFilter === "scratch"
                       ? "🎫 Scratch & Win"
-                      : "⚡ Instant Win"}
+                      : "🎟️ Competitions"}
                   </span>
                 </h2>
                 <p className="text-muted-foreground text-sm md:text-lg font-semibold">

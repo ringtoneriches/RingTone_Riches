@@ -180,7 +180,7 @@ function CompetitionForm({
               }
               data-testid="select-type"
             >
-              <option value="instant">Instant Win</option>
+              <option value="instant">Regular Competition</option>
               <option value="spin">Spin Wheel</option>
               <option value="scratch">Scratch Card</option>
             </select>
@@ -190,7 +190,7 @@ function CompetitionForm({
           <div>
             <Label>Type</Label>
             <div className="w-full p-2 border border-border rounded-md bg-muted text-foreground">
-              {fixedType === "spin" ? "Spin Wheel" : fixedType === "scratch" ? "Scratch Card" : "Instant Win"}
+              {fixedType === "spin" ? "Spin Wheel" : fixedType === "scratch" ? "Scratch Card" : "Regular Competition"}
             </div>
           </div>
         )}
@@ -398,7 +398,7 @@ export default function AdminCompetitions() {
           </div>
           <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-instant">
             <Plus className="w-4 h-4 mr-2" />
-            Create Competitions
+            Create Competition
           </Button>
         </div>
 
@@ -536,7 +536,7 @@ export default function AdminCompetitions() {
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create New Instant Win Competition</DialogTitle>
+              <DialogTitle>Create New Competition</DialogTitle>
             </DialogHeader>
             <CompetitionForm
               fixedType="instant"
@@ -553,7 +553,7 @@ export default function AdminCompetitions() {
         >
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Edit Instant Win Competition</DialogTitle>
+              <DialogTitle>Edit Competition</DialogTitle>
             </DialogHeader>
             {editingCompetition && (
               <CompetitionForm

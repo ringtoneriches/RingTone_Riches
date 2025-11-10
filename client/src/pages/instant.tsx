@@ -107,7 +107,7 @@ const Instant = () => {
         ) : (
           <div className="flex justify-center items-center py-32">
             <p className="text-center text-xl text-muted-foreground">
-              Instant Win games coming soon! Stay tuned.
+              No regular competitions available at the moment. Check back soon!
             </p>
           </div>
         )}

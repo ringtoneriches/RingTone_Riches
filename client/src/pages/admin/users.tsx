@@ -26,6 +26,10 @@ interface User {
   ringtonePoints: number;
   isAdmin: boolean;
   createdAt: string;
+  addressStreet: string | null;
+  addressCity: string | null;
+  addressPostcode: string | null;
+  addressCountry: string | null;
 }
 
 export default function AdminUsers() {
@@ -313,6 +317,28 @@ export default function AdminUsers() {
                   />
                 </div>
               </div>
+              
+              {/* Address Information */}
+              {(editingUser?.addressStreet || editingUser?.addressCity || editingUser?.addressPostcode) && (
+                <div className="space-y-3 border-t pt-4">
+                  <Label className="text-base font-semibold">Delivery Address</Label>
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                    {editingUser?.addressStreet && (
+                      <p className="text-sm"><span className="font-medium">Street:</span> {editingUser.addressStreet}</p>
+                    )}
+                    {editingUser?.addressCity && (
+                      <p className="text-sm"><span className="font-medium">City:</span> {editingUser.addressCity}</p>
+                    )}
+                    {editingUser?.addressPostcode && (
+                      <p className="text-sm"><span className="font-medium">Postcode:</span> {editingUser.addressPostcode}</p>
+                    )}
+                    {editingUser?.addressCountry && (
+                      <p className="text-sm"><span className="font-medium">Country:</span> {editingUser.addressCountry}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-3 border-t pt-4">
                 <Label className="text-base font-semibold">Role & Permissions</Label>
                 <div className="flex items-center gap-2">

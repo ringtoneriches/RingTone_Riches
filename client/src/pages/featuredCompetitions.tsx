@@ -81,7 +81,7 @@ export default function FeaturedCompetitions({ competitions }: FeaturedCompetiti
                           
                           {/* Image Container with Premium Gold Border */}
                           <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-[#FACC15]/60 shadow-[#FACC15]/30">
-                            <div className="relative  bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+                            <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
                               <img
                                 src={
                                   competition.imageUrl ||
@@ -153,10 +153,12 @@ export default function FeaturedCompetitions({ competitions }: FeaturedCompetiti
                             <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                             <span className="text-[10px] md:text-sm text-white font-semibold">Fair Play</span>
                           </div>
-                          <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2 md:px-3 py-1.5 md:py-2 rounded-lg border border-white/20">
-                            <Trophy className="w-3 h-3 md:w-4 md:h-4 text-primary" />
-                            <span className="text-[10px] md:text-sm text-white font-semibold">Instant Win</span>
-                          </div>
+                          {(competition.type === "spin" || competition.type === "scratch") && (
+                            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2 md:px-3 py-1.5 md:py-2 rounded-lg border border-white/20">
+                              <Trophy className="w-3 h-3 md:w-4 md:h-4 text-primary" />
+                              <span className="text-[10px] md:text-sm text-white font-semibold">Instant Win</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Price and CTA */}

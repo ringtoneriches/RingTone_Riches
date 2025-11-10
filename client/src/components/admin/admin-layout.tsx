@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   CircleDot,
-  CreditCard
+  CreditCard,
+  ArrowDownCircle
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const sidebarItems = [
   { name: "Competitions", path: "/admin/competitions", icon: Trophy },
   { name: "Users", path: "/admin/users", icon: Users },
   { name: "Orders", path: "/admin/orders", icon: ShoppingCart },
+  // { name: "Withdrawals", path: "/admin/withdrawals", icon: ArrowDownCircle },
   { name: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
