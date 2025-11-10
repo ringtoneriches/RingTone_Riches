@@ -44,6 +44,10 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true),
   referralCode: varchar("referral_code").unique(),
   referredBy: varchar("referred_by"),
+  addressStreet: text("address_street"),
+  addressCity: text("address_city"),
+  addressPostcode: varchar("address_postcode"),
+  addressCountry: varchar("address_country"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -106,6 +110,22 @@ export const transactions = pgTable("transactions", {
   description: text("description"),
   orderId: uuid("order_id").references(() => orders.id),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Withdrawal requests
+export const withdrawalRequests = pgTable("withdrawal_requests", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  accountName: text("account_name").notNull(),
+  accountNumber: varchar("account_number").notNull(),
+  sortCode: varchar("sort_code").notNull(),
+  status: varchar("status", { enum: ["pending", "approved", "rejected", "processed"] }).default("pending"),
+  adminNotes: text("admin_notes"),
+  processedBy: varchar("processed_by").references(() => users.id),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Past winners for showcase
@@ -213,6 +233,7 @@ export const insertScratchCardImageSchema = createInsertSchema(scratchCardImages
 export const insertPlatformSettingsSchema = createInsertSchema(platformSettings);
 export const insertSpinWinSchema = createInsertSchema(spinWins).omit({ id: true, wonAt: true });
 export const insertScratchCardWinSchema = createInsertSchema(scratchCardWins).omit({ id: true, wonAt: true });
+export const insertWithdrawalRequestSchema = createInsertSchema(withdrawalRequests).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -241,6 +262,8 @@ export type ScratchCardImage = typeof scratchCardImages.$inferSelect;
 export type InsertScratchCardImage = z.infer<typeof insertScratchCardImageSchema>;
 export type PlatformSettings = typeof platformSettings.$inferSelect;
 export type InsertPlatformSettings = z.infer<typeof insertPlatformSettingsSchema>;
+export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+export type InsertWithdrawalRequest = z.infer<typeof insertWithdrawalRequestSchema>;
 
 // Registration and login schemas
 export const registerUserSchema = createInsertSchema(users).pick({
