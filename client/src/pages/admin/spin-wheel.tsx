@@ -387,14 +387,14 @@ export default function AdminSpinWheel() {
               <Settings className="w-4 h-4" />
               Wheel Settings
             </Button>
-            <Button 
+            {/* <Button 
               onClick={() => setCreateDialogOpen(true)} 
               size="icon"
               className="bg-yellow-500 hover:bg-yellow-600 text-black"
               data-testid="button-create-spin"
             >
               <Plus className="w-4 h-4" />
-            </Button>
+            </Button> */}
           </div>
         </div>
 
@@ -460,7 +460,7 @@ export default function AdminSpinWheel() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                {/* <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -487,7 +487,7 @@ export default function AdminSpinWheel() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
-                </div>
+                </div> */}
               </div>
             </div>
           ))}

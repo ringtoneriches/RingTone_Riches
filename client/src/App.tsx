@@ -90,7 +90,7 @@ function Router() {
       <Route path="/success/competition" component={CheckoutSuccess} />
       <Route path="/failed" component={CheckoutFailed} />
       <Route path="/cancelled" component={CheckoutCancelled} />
-      <Route path="/ringtune-points" component={RingtonePoints} />
+      <Route path="/ringtone-points" component={RingtonePoints} />
       <Route path="/entries" component={Entries} />
       <Route path="/referral" component={Referral} />
       <Route path="/scratch" component={scratchcard} />

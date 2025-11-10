@@ -329,7 +329,7 @@ export default function AdminSettings() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-card">
+          {/* <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-yellow-400" />
@@ -409,9 +409,9 @@ export default function AdminSettings() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          <Card className="border-border bg-card">
+          {/* <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Mail className="w-5 h-5 text-yellow-400" />
@@ -442,9 +442,9 @@ export default function AdminSettings() {
                 Email service not yet configured
               </p>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          <Card className="border-border bg-card">
+          {/* <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="w-5 h-5 text-yellow-400" />
@@ -473,9 +473,9 @@ export default function AdminSettings() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          <Card className="border-border bg-card">
+          {/* <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-yellow-400" />
@@ -542,7 +542,7 @@ export default function AdminSettings() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         <div className="flex justify-end gap-4">

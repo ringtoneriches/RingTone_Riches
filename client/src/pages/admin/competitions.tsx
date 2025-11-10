@@ -390,15 +390,15 @@ export default function AdminCompetitions() {
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground" data-testid="heading-competitions">
-              Instant Win Competitions
+              Competitions
             </h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">
-              Manage your instant win competitions
+              Manage your competitions
             </p>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-instant">
             <Plus className="w-4 h-4 mr-2" />
-            Create Instant Win
+            Create Competitions
           </Button>
         </div>
 

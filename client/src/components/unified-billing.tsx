@@ -118,7 +118,7 @@ export default function UnifiedBilling({ orderId, orderType }: UnifiedBillingPro
         queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         queryClient.invalidateQueries({ queryKey: [getEndpoint(), orderId] });
 
-        const competitionId = data.competitionId || order?.competitionId;
+        const competitionId = data.competitionId || order?.competitionId || order?.order?.competitionId; 
         
         setTimeout(() => {
           if (orderType === 'spin') {

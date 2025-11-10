@@ -376,10 +376,10 @@ export default function AdminScratchCard() {
               Manage your scratch card competitions
             </p>
           </div>
-          <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-scratch">
+          {/* <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-scratch">
             <Plus className="w-4 h-4 mr-2" />
             Create Scratch Card
-          </Button>
+          </Button> */}
         </div>
 
         <div className="grid gap-4">
@@ -444,7 +444,7 @@ export default function AdminScratchCard() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                {/* <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -471,7 +471,7 @@ export default function AdminScratchCard() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
-                </div>
+                </div> */}
               </div>
             </div>
           ))}
