@@ -1475,20 +1475,14 @@ export default function Wallet() {
                     <CardContent className="pt-6">
                       <div className="grid grid-cols-2 gap-4">
                         <button
-                          onClick={() => {
-                            const tabs = document.querySelector('[value="orders"]') as HTMLElement;
-                            tabs?.click();
-                          }}
+                          onClick={() => handleTabChange("orders")}
                           className="bg-gradient-to-r from-yellow-600 to-yellow-500 text-black py-3 rounded-lg font-bold hover:from-yellow-500 hover:to-yellow-400 transition-all transform hover:scale-105 shadow-lg shadow-yellow-500/50"
                           data-testid="button-view-orders"
                         >
                           View Orders
                         </button>
                         <button
-                          onClick={() => {
-                            const tabs = document.querySelector('[value="wallet"]') as HTMLElement;
-                            tabs?.click();
-                          }}
+                         onClick={() => handleTabChange("wallet")}
                           className="bg-zinc-800 text-white py-3 rounded-lg font-bold hover:bg-zinc-700 transition-all border border-yellow-500/30"
                           data-testid="button-manage-wallet"
                         >
@@ -1510,10 +1504,7 @@ export default function Wallet() {
                           £{parseFloat(user?.balance || "0").toFixed(2)}
                         </p>
                         <button
-                          onClick={() => {
-                            const tabs = document.querySelector('[value="wallet"]') as HTMLElement;
-                            tabs?.click();
-                          }}
+                         onClick={() => handleTabChange("wallet")}
                           className="mt-4 w-full bg-gradient-to-r from-yellow-600 to-yellow-500 text-black px-6 py-3 rounded-lg font-bold hover:from-yellow-500 hover:to-yellow-400 transition-all transform hover:scale-105 shadow-lg shadow-yellow-500/50"
                           data-testid="button-top-up"
                         >

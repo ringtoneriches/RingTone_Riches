@@ -119,7 +119,7 @@ const upload = multer({
       cb(new Error("Only image files are allowed"));
     }
   },
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 // Initialize Stripe only if keys are available
 // let stripe: Stripe | null = null;
