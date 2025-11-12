@@ -11,6 +11,7 @@ import {
   scratchCardUsage,
   platformSettings,
   scratchCardImages,
+  withdrawalRequests,
   type User,
   type UpsertUser,
   type Competition,
@@ -31,6 +32,8 @@ import {
   type InsertPlatformSettings,
   type ScratchCardImage,
   type InsertScratchCardImage,
+  type WithdrawalRequest,
+  type InsertWithdrawalRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sum, sql } from "drizzle-orm";
@@ -114,6 +117,18 @@ export interface IStorage {
   updateScratchCardImage(id: string, data: Partial<InsertScratchCardImage>): Promise<ScratchCardImage>;
   deleteScratchCardImage(id: string): Promise<void>;
   incrementScratchCardImageWins(id: string): Promise<void>;
+
+  // Withdrawal request operations
+  createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest>;
+  getWithdrawalRequests(): Promise<WithdrawalRequest[]>;
+  getUserWithdrawalRequests(userId: string): Promise<WithdrawalRequest[]>;
+  getWithdrawalRequest(id: string): Promise<WithdrawalRequest | undefined>;
+  updateWithdrawalRequestStatus(
+    id: string,
+    status: string,
+    adminNotes?: string,
+    processedBy?: string
+  ): Promise<WithdrawalRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -595,6 +610,58 @@ async recordSpinUsage(orderId: string, userId: string): Promise<void> {
         quantityWon: sql`${scratchCardImages.quantityWon} + 1`,
       })
       .where(eq(scratchCardImages.id, id));
+  }
+
+  // Withdrawal request operations
+  async createWithdrawalRequest(request: InsertWithdrawalRequest): Promise<WithdrawalRequest> {
+    const [created] = await db
+      .insert(withdrawalRequests)
+      .values(request)
+      .returning();
+    return created;
+  }
+
+  async getWithdrawalRequests(): Promise<WithdrawalRequest[]> {
+    return await db
+      .select()
+      .from(withdrawalRequests)
+      .orderBy(desc(withdrawalRequests.createdAt));
+  }
+
+  async getUserWithdrawalRequests(userId: string): Promise<WithdrawalRequest[]> {
+    return await db
+      .select()
+      .from(withdrawalRequests)
+      .where(eq(withdrawalRequests.userId, userId))
+      .orderBy(desc(withdrawalRequests.createdAt));
+  }
+
+  async getWithdrawalRequest(id: string): Promise<WithdrawalRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(withdrawalRequests)
+      .where(eq(withdrawalRequests.id, id));
+    return request;
+  }
+
+  async updateWithdrawalRequestStatus(
+    id: string,
+    status: string,
+    adminNotes?: string,
+    processedBy?: string
+  ): Promise<WithdrawalRequest> {
+    const [updated] = await db
+      .update(withdrawalRequests)
+      .set({
+        status,
+        adminNotes,
+        processedBy,
+        processedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(withdrawalRequests.id, id))
+      .returning();
+    return updated;
   }
 }
 
