@@ -38,6 +38,7 @@ import { and, asc, desc, eq, inArray, sql, like } from "drizzle-orm";
 import { z } from "zod";
 import { sendOrderConfirmationEmail, sendWelcomeEmail } from "./email";
 import { wsManager } from "./websocket";
+import { upload } from "./cloudinary";
 
 // Default spin wheel configuration matching the actual wheel
 // Total probability MUST equal 100% exactly
@@ -94,33 +95,33 @@ const spinConfigSchema = z.object({
   maxSpinsPerUser: z.number().nullable().optional(),
 });
 
-const uploadDir = path.join(process.cwd(), "attached_assets", "competitions");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// const uploadDir = path.join(process.cwd(), "attached_assets", "competitions");
+// if (!fs.existsSync(uploadDir)) {
+//   fs.mkdirSync(uploadDir, { recursive: true });
+// }
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueName = `${Date.now()}-${nanoid(8)}${path.extname(file.originalname)}`;
-      cb(null, uniqueName);
-    },
-  }),
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed"));
-    }
-  },
-  limits: { fileSize: 20 * 1024 * 1024 },
-});
+// const upload = multer({
+//   storage: multer.diskStorage({
+//     destination: (req, file, cb) => {
+//       cb(null, uploadDir);
+//     },
+//     filename: (req, file, cb) => {
+//       const uniqueName = `${Date.now()}-${nanoid(8)}${path.extname(file.originalname)}`;
+//       cb(null, uniqueName);
+//     },
+//   }),
+//   fileFilter: (req, file, cb) => {
+//     const allowedTypes = /jpeg|jpg|png|gif|webp/;
+//     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+//     const mimetype = allowedTypes.test(file.mimetype);
+//     if (extname && mimetype) {
+//       cb(null, true);
+//     } else {
+//       cb(new Error("Only image files are allowed"));
+//     }
+//   },
+//   limits: { fileSize: 20 * 1024 * 1024 },
+// });
 // Initialize Stripe only if keys are available
 // let stripe: Stripe | null = null;
 // if (process.env.STRIPE_SECRET_KEY) {
@@ -152,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-      const imagePath = `/attached_assets/competitions/${req.file.filename}`;
+      const imagePath =  req.file.path; 
       return res.status(200).json({ imagePath });
     } catch (error: any) {
       console.error("File upload error:", error);
@@ -1998,179 +1999,6 @@ app.get("/api/scratch-order/:orderId", isAuthenticated, async (req: any, res) =>
     res.status(500).json({ message: "Failed to fetch scratch order" });
   }
 });
-
-// DUPLICATE ENDPOINT REMOVED - Using Cashflows-specific endpoint above (line ~397)
-
-  // Game routes
-// app.post("/api/play-spin-wheel", isAuthenticated, async (req: any, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const { winnerPrize } = req.body;
-//     const SPIN_COST = 2; // £2 per spin
-
-//     // Fetch user and ensure balance is enough
-//     const user = await storage.getUser(userId);
-//     const currentBalance = parseFloat(user?.balance || "0");
-
-//     if (currentBalance < SPIN_COST) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Insufficient balance. Please top up your wallet.",
-//       });
-//     }
-
-//     // Deduct the spin cost
-//     const newBalance = currentBalance - SPIN_COST;
-//     await storage.updateUserBalance(userId, newBalance.toFixed(2));
-
-//     await storage.createTransaction({
-//       userId,
-//       type: "withdrawal",
-//       amount: SPIN_COST.toFixed(2),
-//       description: "Spin Wheel - Spin cost",
-//     });
-
-//     // ---- Handle prize logic ----
-//     if (typeof winnerPrize.amount === "number" && winnerPrize.amount > 0) {
-//       // 💰 Cash prize
-//       const prizeAmount = winnerPrize.amount;
-//       const finalBalance = newBalance + prizeAmount;
-
-//       await storage.updateUserBalance(userId, finalBalance.toFixed(2));
-
-//       await storage.createTransaction({
-//         userId,
-//         type: "prize",
-//         amount: prizeAmount.toFixed(2),
-//         description: `Spin wheel prize: ${winnerPrize.brand || "Prize"} - £${prizeAmount}`,
-//       });
-
-//       await storage.createWinner({
-//         userId,
-//         competitionId: null,
-//         prizeDescription: winnerPrize.brand || "Spin Wheel Prize",
-//         prizeValue: `£${prizeAmount}`,
-//         imageUrl: winnerPrize.image || null,
-//       });
-//     } else if (
-//       typeof winnerPrize.amount === "string" &&
-//       winnerPrize.amount.includes("Ringtones")
-//     ) {
-//       // 🎵 Ringtone points prize
-//       const match = winnerPrize.amount.match(/(\d+)\s*Ringtones/);
-//       if (match) {
-//         const points = parseInt(match[1]);
-//         const newPoints = (user?.ringtonePoints || 0) + points;
-
-//         await storage.updateUserRingtonePoints(userId, newPoints);
-
-//         await storage.createTransaction({
-//           userId,
-//           type: "prize",
-//           amount: points.toString(),
-//           description: `Spin wheel prize: ${winnerPrize.brand || "Prize"} - ${points} Ringtones`,
-//         });
-
-//         await storage.createWinner({
-//           userId,
-//           competitionId: null,
-//           prizeDescription: winnerPrize.brand || "Spin Wheel Prize",
-//           prizeValue: `${points} Ringtones`,
-//           imageUrl: winnerPrize.image || null,
-//         });
-//       }
-//     }
-
-//     res.json({
-//       success: true,
-//       prize: winnerPrize,
-//       balance: newBalance.toFixed(2),
-//     });
-//   } catch (error) {
-//     console.error("Error playing spin wheel:", error);
-//     res.status(500).json({ message: "Failed to play spin wheel" });
-//   }
-// });
-
-// app.post("/api/play-scratch-card", isAuthenticated, async (req: any, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const { winnerPrize } = req.body;
-//     const SCRATCH_COST = 2; // £2 per scratch
-
-//     const user = await storage.getUser(userId);
-//     const currentBalance = parseFloat(user?.balance || "0");
-
-//     if (currentBalance < SCRATCH_COST) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Insufficient balance. Please top up your wallet.",
-//       });
-//     }
-
-//     // 💳 Deduct scratch cost
-//     const newBalance = currentBalance - SCRATCH_COST;
-//     await storage.updateUserBalance(userId, newBalance.toFixed(2));
-//     await storage.createTransaction({
-//       userId,
-//       type: "withdrawal",
-//       amount: SCRATCH_COST.toFixed(2),
-//       description: "Scratch Card - Play cost",
-//     });
-
-//     // 🎁 Handle prize logic
-//     if (winnerPrize.type === "cash" && winnerPrize.value) {
-//       const amount = parseFloat(winnerPrize.value);
-//       if (amount > 0) {
-//         const finalBalance = newBalance + amount;
-//         await storage.updateUserBalance(userId, finalBalance.toFixed(2));
-
-//         await storage.createTransaction({
-//           userId,
-//           type: "prize",
-//           amount: amount.toFixed(2),
-//           description: `Scratch card prize: £${amount}`,
-//         });
-
-//         await storage.createWinner({
-//           userId,
-//           competitionId : null,
-//           prizeDescription: "Scratch Card Prize",
-//           prizeValue: `£${amount}`,
-//           imageUrl: winnerPrize.image || null,
-//         });
-//       }
-//     } else if (winnerPrize.type === "points" && winnerPrize.value) {
-//       const points = parseInt(winnerPrize.value);
-//       const newPoints = (user?.ringtonePoints || 0) + points;
-
-//       await storage.updateUserRingtonePoints(userId, newPoints);
-//       await storage.createTransaction({
-//         userId,
-//         type: "prize",
-//         amount: points.toString(),
-//         description: `Scratch card prize: ${points} Ringtones`,
-//       });
-
-//       await storage.createWinner({
-//         userId,
-//         competitionId : null, 
-//         prizeDescription: "Scratch Card Prize",
-//         prizeValue: `${points} Ringtones`,
-//         imageUrl: winnerPrize.image || null,
-//       });
-//     }
-
-//     res.json({
-//       success: true,
-//       prize: winnerPrize,
-//       balance: newBalance.toFixed(2),
-//     });
-//   } catch (error) {
-//     console.error("Error playing scratch card:", error);
-//     res.status(500).json({ message: "Failed to play scratch card" });
-//   }
-// });
 
   // Convert ringtone points to wallet balance
 app.post("/api/convert-ringtone-points", isAuthenticated, async (req: any, res) => {
