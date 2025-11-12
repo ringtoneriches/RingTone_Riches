@@ -20,6 +20,7 @@ import WinnerDrawDialog from "@/components/admin/winner-draw-dialog";
 import PrizeConfigSpin, { SpinPrizeData } from "@/components/admin/prize-config-spin";
 import PrizeConfigScratch, { ScratchPrizeData } from "@/components/admin/prize-config-scratch";
 import PrizeConfigInstant, { InstantPrizeData } from "@/components/admin/prize-config-instant";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CompetitionFormData {
   title: string;
@@ -116,10 +117,11 @@ function CompetitionForm({
 
       <div>
         <Label>Description</Label>
-        <Input
+          <Textarea
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           placeholder="Competition description"
+          rows={5}
         />
       </div>
 
