@@ -105,7 +105,7 @@ function CompetitionForm({
         <TabsTrigger value="prizes" data-testid="tab-prizes">Prize Configuration</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="basic" className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+      <TabsContent value="basic" className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2 pl-2">
       <div>
         <Label>Title</Label>
         <Input
@@ -165,7 +165,8 @@ function CompetitionForm({
                 alt="Preview" 
                 className="h-20 w-20 object-cover rounded border"
               />
-              <span className="truncate">{form.imageUrl}</span>
+              <span className="truncate max-w-xs">{form.imageUrl.split("/").slice(-1)[0]}</span>
+
             </div>
           )}
         </div>
